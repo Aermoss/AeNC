@@ -5,7 +5,6 @@ A programming language made with C++.
 1) Run the interpreter and type your AeNC code file name
 
 ## Examples
-# Server
 ``` 
 PRINT "Hello, World!"
 ```
