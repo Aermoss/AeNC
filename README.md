@@ -8,3 +8,4 @@ A programming language made with C++.
 ``` 
 PRINT "Hello, World!"
 ```
+OUTPUT: Hello, World!
