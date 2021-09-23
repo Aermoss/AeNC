@@ -1,4 +1,4 @@
-# Aermoss_AeNC_V0.0.1
+# Aermoss_AeNC
 A programming language made with C++.
 
 ## Getting Started
