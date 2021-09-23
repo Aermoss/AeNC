@@ -6,6 +6,6 @@ A programming language made with C++.
 
 ## Examples
 # Hello World
-``` 
+``` basic
 PRINT "Hello, World!"
 ```
