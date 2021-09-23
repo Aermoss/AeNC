@@ -1,0 +1,14 @@
+VAR a = TRUE
+
+WHILE (VAR a) [
+    INPUT "> " VAR command
+
+    IF (VAR command == "EXIT") [
+        PRINT "Exiting..."
+        VAR a = FALSE
+    ]
+
+    IF (VAR command != "EXIT") [
+        SYSTEM VAR command
+    ]
+]
