@@ -9,3 +9,29 @@ A programming language made with C++.
 ``` basic
 PRINT "Hello, World!"
 ```
+
+# Nice to meet you ...
+``` basic
+INPUT "What is your name: " VAR name
+SYSTEM "cls"
+PRINT "Nice to meet you,"
+PRINT VAR name
+```
+
+# Command Line
+``` basic
+VAR a = TRUE
+
+WHILE (VAR a) [
+    INPUT "> " VAR command
+
+    IF (VAR command == "EXIT") [
+        PRINT "Exiting..."
+        VAR a = FALSE
+    ]
+
+    IF (VAR command != "EXIT") [
+        SYSTEM VAR command
+    ]
+]
+```
