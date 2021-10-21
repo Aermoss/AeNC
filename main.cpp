@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <chrono>
+#include <ctime>
+#include <conio.h>
 
 using namespace std;
 
@@ -38,6 +41,12 @@ vector <string> expression_lexer(string expression) {
     for(char& chr : expression) {
         token = token + chr;
 
+        if (token == " ") {
+            if (string_state == 1) {
+                str = str + " ";
+            }
+        }
+
         if (token == " " || token == "<EOF>") {
             if (var_name != "") {
                 tokens.push_back(var_name);
@@ -45,6 +54,25 @@ vector <string> expression_lexer(string expression) {
                 var_name = "";
             }
 
+            token = "";
+        }
+
+        else if (token == "\"" || token == " \"") {
+            token = "";
+
+            if (string_state == 0) {
+                string_state = 1;
+            }
+
+            else if (string_state == 1) {
+                tokens.push_back(str);
+                string_state = 0;
+                str = "";
+            }
+        }
+
+        else if (string_state == 1) {
+            str = str + token;
             token = "";
         }
 
@@ -77,32 +105,13 @@ vector <string> expression_lexer(string expression) {
             var_name = var_name + token;
             token = "";
         }
-
-        else if (token == "\"" || token == " \"") {
-            token = "";
-
-            if (string_state == 0) {
-                string_state = 1;
-            }
-
-            else if (string_state == 1) {
-                tokens.push_back(str);
-                string_state = 0;
-                str = "";
-            }
-        }
-
-        else if (string_state == 1) {
-            str = str + token;
-            token = "";
-        }
     }
 
     return tokens;
 }
 
 string expression_parser(vector <string> tokens) {
-    vector <string> tokens_2;
+    vector <string> new_tokens;
     string result;
     int pos = 0;
 
@@ -111,34 +120,30 @@ string expression_parser(vector <string> tokens) {
             break;
         }
 
-        /*
-         * cout << tokens[pos] << endl;
-         *
-         * pos = pos + 1;
-         */
+        if (tokens[pos] == "VAR") {
+            new_tokens.push_back(variables[tokens[pos + 1]]);
+            pos = pos + 2;
+        }
+
+        else {
+            new_tokens.push_back(tokens[pos]);
+            pos = pos + 1;
+        }
+    }
+
+    pos = 0;
+    tokens = new_tokens;
+
+    result = tokens[pos];
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
 
         if (tokens[pos] == "PLUS") {
-            if (pos == 2) {
-                if (tokens[pos + 1] == "VAR") {
-                    result = variables[tokens[pos - 1]] + variables[tokens[pos + 2]];
-                }
-
-                else {
-                    result = variables[tokens[pos - 1]] + tokens[pos + 1];
-                }
-            }
-
-            else {
-                if (tokens[pos + 1] == "VAR") {
-                    result = tokens[pos - 1] + variables[tokens[pos + 2]];
-                }
-
-                else {
-                    result = tokens[pos - 1] + tokens[pos + 1];
-                }
-            }
-
-            return result;
+            result = result + tokens[pos + 1];
+            pos = pos + 2;
         }
 
         else {
@@ -146,7 +151,7 @@ string expression_parser(vector <string> tokens) {
         }
     }
 
-    return "";
+    return result;
 }
 
 vector <string> condition_lexer(string condition) {
@@ -171,7 +176,9 @@ vector <string> condition_lexer(string condition) {
         }
 
         if (token == " " || token == "<EOF>") {
-            token = "";
+            if (string_state == 0) {
+                token = "";
+            }
         }
 
         else if (token == "TRUE") {
@@ -427,6 +434,10 @@ vector <string> lexer(string code) {
             if (string_state == 0) {
                 token = "";
             }
+
+            else {
+                str = str + " ";
+            }
         }
 
         else if (token == "\n" || token == "<EOF>") {
@@ -436,6 +447,25 @@ vector <string> lexer(string code) {
                 var_name = "";
             }
 
+            token = "";
+        }
+
+        else if (token == "\"" || token == " \"") {
+            token = "";
+
+            if (string_state == 0) {
+                string_state = 1;
+            }
+
+            else if (string_state == 1) {
+                tokens.push_back(str);
+                string_state = 0;
+                str = "";
+            }
+        }
+
+        else if (string_state == 1) {
+            str = str + token;
             token = "";
         }
 
@@ -515,25 +545,6 @@ vector <string> lexer(string code) {
             var_name = var_name + token;
             token = "";
         }
-
-        else if (token == "\"" || token == " \"") {
-            token = "";
-
-            if (string_state == 0) {
-                string_state = 1;
-            }
-
-            else if (string_state == 1) {
-                tokens.push_back(str);
-                string_state = 0;
-                str = "";
-            }
-        }
-
-        else if (string_state == 1) {
-            str = str + token;
-            token = "";
-        }
     }
 
     return tokens;
@@ -600,12 +611,23 @@ void parser(vector <string> tokens) {
         else if (tokens[pos] == "INPUT") {
             string input;
 
-            cout << tokens[pos + 1] << " ";
+            if (tokens[pos + 1] == "<CEX>") {
+                expression_tokens = expression_lexer(tokens[pos + 2]);
+                cout << expression_parser(expression_tokens);
+            }
+
+            else {
+                cout << tokens[pos + 1];
+            }
+            
             getline(cin >> ws, input);
 
-            if (tokens[pos + 2] == "VAR") {
-                variables[tokens[pos + 3]] = input;
-                pos = pos + 4;
+            if (tokens[pos + 1] == "<CEX>") {
+                pos = pos + 3;
+            }
+
+            else {
+                pos = pos + 2;
             }
         }
 
@@ -655,9 +677,34 @@ void parser(vector <string> tokens) {
         }
 
         else if (tokens[pos] == "VAR") {
+            string input;
+
             if (tokens[pos + 2] == "VAR") {
                 variables[tokens[pos + 1]] = variables[tokens[pos + 3]];
                 pos = pos + 4;
+            }
+
+            if (tokens[pos + 2] == "INPUT") {
+                if (tokens[pos + 3] == "<CEX>") {
+                    expression_tokens = expression_lexer(tokens[pos + 4]);
+                    cout << expression_parser(expression_tokens);
+                }
+
+                else {
+                    cout << tokens[pos + 3];
+                }
+                
+                getline(cin >> ws, input);
+
+                variables[tokens[pos + 1]] = input;
+
+                if (tokens[pos + 3] == "<CEX>") {
+                    pos = pos + 5;
+                }
+
+                else {
+                    pos = pos + 4;
+                }
             }
 
             else if (tokens[pos + 2] == "<CEX>") {
@@ -675,23 +722,56 @@ void parser(vector <string> tokens) {
 }
 
 int main(int argc, char** argv) {
+    auto start = chrono::system_clock::now();
+    auto end = chrono::system_clock::now();
+    chrono::duration <double> elapsed_seconds;
     vector <string> tokens;
     string filename;
     string code;
+    string arg1 = "";
+    string arg2 = "";
+    string arg3 = "";
 
-    if (argv[1] != NULL) {
-        filename = argv[1];
+    if (argc > 1) {
+        arg1 = argv[1];
+    }
+
+    else {
+        cout << "No input files, proccess terminated." << endl;
+
+        return 0;
     }
     
-    else {
-        cout << "> ";
-        cin >> filename;
+    if (argc > 2) {
+        arg2 = argv[2];
+    }
+
+    if (argc > 3) {
+        arg3 = argv[3];
     }
 
     // filename = "test.aenc";
 
-    system("cls");
-    code = open_file(filename);
+    code = open_file(arg1);
     tokens = lexer(code);
+
+    if(arg2 == "--info" || arg3 == "--info") {
+        end = chrono::system_clock::now();
+
+        elapsed_seconds = end - start;
+        cout << "Ready in: " << elapsed_seconds.count() << endl;
+
+        start = chrono::system_clock::now();
+    }
+
     parser(tokens);
+
+    if(arg2 == "--info" || arg3 == "--info") {
+        end = chrono::system_clock::now();
+
+        elapsed_seconds = end - start;
+        cout << "Finished in: " << elapsed_seconds.count() << endl;
+    }
+
+    return 0;
 }
