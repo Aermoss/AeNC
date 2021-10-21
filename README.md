@@ -2,7 +2,7 @@
 A programming language made with C++.
 
 ## Getting Started
-1) Open command prompt and type:
+1) To execute a AeNC code open command prompt and type:
 
 ```
 main.exe <filename>
