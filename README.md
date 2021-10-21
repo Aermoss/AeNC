@@ -10,14 +10,6 @@ A programming language made with C++.
 PRINT "Hello, World!"
 ```
 
-# Nice to meet you
-``` basic
-INPUT "What is your name: " VAR name
-SYSTEM "cls"
-PRINT "Nice to meet you,"
-PRINT VAR name
-```
-
 # Command Line
 ``` basic
 VAR a = TRUE
