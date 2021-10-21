@@ -1,4 +1,0 @@
-INPUT "What is your name: " VAR name
-SYSTEM "cls"
-PRINT "Nice to meet you,"
-PRINT VAR name
