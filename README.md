@@ -2,23 +2,27 @@
 A programming language made with C++.
 
 ## Getting Started
-1) Run the interpreter and type your AeNC code file name
+1) Open command prompt and type:
+
+```
+main.exe <filename>
+```
 
 ## Examples
 # Hello World
 ``` basic
-PRINT "Hello, World!"
+PRINT ("Hello, World!")
 ```
 
-# Command Line
+# Command Prompt
 ``` basic
 VAR a = TRUE
 
 WHILE (VAR a) [
-    INPUT "> " VAR command
+    VAR command = INPUT ("> ")
 
     IF (VAR command == "EXIT") [
-        PRINT "Exiting..."
+        PRINT ("Exiting...")
         VAR a = FALSE
     ]
 
