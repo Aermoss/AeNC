@@ -5,7 +5,7 @@ A programming language made with C++.
 1) To execute a AeNC code open command prompt and type:
 
 ```
-main.exe <filename>
+main <filename>
 ```
 
 ## Examples
