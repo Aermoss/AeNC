@@ -11,23 +11,23 @@ main <filename>
 ## Examples
 # Hello World
 ``` basic
-PRINT ("Hello, World!")
+print ("Hello, World!")
 ```
 
 # Command Prompt
 ``` basic
-VAR a = TRUE
+var destroyed = false
 
-WHILE (VAR a) [
-    VAR command = INPUT ("> ")
+while (not var destroyed) {
+    var command = input ("> ")
 
-    IF (VAR command == "EXIT") [
-        PRINT ("Exiting...")
-        VAR a = FALSE
-    ]
+    id (var command == "EXIT") {
+        print ("Exiting...")
+        var destroyed = true
+    }
 
-    IF (VAR command != "EXIT") [
-        SYSTEM VAR command
-    ]
-]
+    if (var command != "EXIT") {
+        system (var command)
+    }
+}
 ```
