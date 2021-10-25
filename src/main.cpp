@@ -33,8 +33,8 @@ vector <string> expression_lexer(string expression) {
     string token = "";
     string var_name = "";
     string str = "";
-    int variable_state = 0;
-    int string_state = 0;
+    bool variable_state = false;
+    bool string_state = false;
 
     expression = expression + "<EOF>";
 
@@ -42,7 +42,7 @@ vector <string> expression_lexer(string expression) {
         token = token + chr;
 
         if (token == " ") {
-            if (string_state == 1) {
+            if (string_state == true) {
                 str = str + " ";
             }
         }
@@ -50,7 +50,7 @@ vector <string> expression_lexer(string expression) {
         if (token == " " || token == "<EOF>") {
             if (var_name != "") {
                 tokens.push_back(var_name);
-                variable_state = 0;
+                variable_state = false;
                 var_name = "";
             }
 
@@ -60,18 +60,18 @@ vector <string> expression_lexer(string expression) {
         else if (token == "\"" || token == " \"") {
             token = "";
 
-            if (string_state == 0) {
-                string_state = 1;
+            if (string_state == false) {
+                string_state = true;
             }
 
-            else if (string_state == 1) {
+            else if (string_state == true) {
                 tokens.push_back(str);
-                string_state = 0;
+                string_state = false;
                 str = "";
             }
         }
 
-        else if (string_state == 1) {
+        else if (string_state == true) {
             str = str + token;
             token = "";
         }
@@ -79,7 +79,7 @@ vector <string> expression_lexer(string expression) {
         else if (token == "<") {
             if (var_name != "") {
                 tokens.push_back(var_name);
-                variable_state = 0;
+                variable_state = false;
                 var_name = "";
             }
         }
@@ -87,7 +87,7 @@ vector <string> expression_lexer(string expression) {
         else if (token == "+") {
             if (var_name != "") {
                 tokens.push_back(var_name);
-                variable_state = 0;
+                variable_state = false;
                 var_name = "";
             }
 
@@ -95,13 +95,13 @@ vector <string> expression_lexer(string expression) {
             token = "";
         }
 
-        else if (token == "VAR") {
+        else if (token == "var") {
             tokens.push_back("VAR");
-            variable_state = 1;
+            variable_state = true;
             token = "";
         }
 
-        else if (variable_state == 1) {
+        else if (variable_state == true) {
             var_name = var_name + token;
             token = "";
         }
@@ -159,35 +159,68 @@ vector <string> condition_lexer(string condition) {
     string token = "";
     string var_name = "";
     string str = "";
-    int variable_state = 0;
-    int string_state = 0;
+    bool variable_state = false;
+    bool string_state = false;
 
     condition = condition + "<EOF>";
 
     for(char& chr : condition) {
         token = token + chr;
 
-        if (token == "=" || token == "<" || token == ">" || token == "!") {
+        if (token == " " || token == "<" || token == "!" || token == "=") {
             if (var_name != "") {
                 tokens.push_back(var_name);
-                variable_state = 0;
+                variable_state = false;
                 var_name = "";
             }
         }
 
         if (token == " " || token == "<EOF>") {
-            if (string_state == 0) {
+            if (string_state == false) {
                 token = "";
+            }
+
+            else {
+                str = str + " ";
             }
         }
 
-        else if (token == "TRUE") {
+        else if (variable_state == true) {
+            var_name = var_name + token;
+            token = "";
+        }
+
+        else if (token == "\"" || token == " \"") {
+            token = "";
+
+            if (string_state == false) {
+                string_state = true;
+            }
+
+            else if (string_state == true) {
+                tokens.push_back(str);
+                string_state = false;
+                str = "";
+            }
+        }
+
+        else if (string_state == true) {
+            str = str + token;
+            token = "";
+        }
+
+        else if (token == "true") {
             tokens.push_back("TRUE");
             token = "";
         }
 
-        else if (token == "FALSE") {
+        else if (token == "false") {
             tokens.push_back("FALSE");
+            token = "";
+        }
+
+        else if (token == "in") {
+            tokens.push_back("IN");
             token = "";
         }
 
@@ -201,33 +234,19 @@ vector <string> condition_lexer(string condition) {
             token = "";
         }
 
-        else if (token == "VAR") {
+        else if (token == "var") {
             tokens.push_back("VAR");
-            variable_state = 1;
+            variable_state = true;
             token = "";
         }
 
-        else if (variable_state == 1) {
-            var_name = var_name + token;
+        else if (token == "and") {
+            tokens.push_back("AND");
             token = "";
         }
 
-        else if (token == "\"" || token == " \"") {
-            token = "";
-
-            if (string_state == 0) {
-                string_state = 1;
-            }
-
-            else if (string_state == 1) {
-                tokens.push_back(str);
-                string_state = 0;
-                str = "";
-            }
-        }
-
-        else if (string_state == 1) {
-            str = str + token;
+        else if (token == "or") {
+            tokens.push_back("OR");
             token = "";
         }
     }
@@ -236,93 +255,163 @@ vector <string> condition_lexer(string condition) {
 }
 
 bool condition_parser(vector <string> tokens) {
+    vector <string> new_tokens;
+    int pos = 0;
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        if (tokens[pos] == "VAR") {
+            new_tokens.push_back(variables[tokens[pos + 1]]);
+            pos = pos + 2;
+        }
+
+        else {
+            new_tokens.push_back(tokens[pos]);
+            pos = pos + 1;
+        }
+    }
+
+    pos = 0;
+    tokens = new_tokens;
+    new_tokens.clear();
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        if (tokens[pos] == "NOT") {
+            if (tokens[pos + 1] == "TRUE") {
+                new_tokens.push_back("FALSE");
+            }
+
+            else if (tokens[pos + 1] == "FALSE") {
+                new_tokens.push_back("TRUE");
+            }
+
+            else {
+                cout << "Error." << endl;
+            }
+            
+            pos = pos + 2;
+        }
+
+        else {
+            new_tokens.push_back(tokens[pos]);
+            pos = pos + 1;
+        }
+    }
+
+    pos = 0;
+    tokens = new_tokens;
+    new_tokens.clear();
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "EQEQ") {
+            if (tokens[pos - 1] == tokens[pos + 1]) {
+                new_tokens.push_back("TRUE");
+            }
+
+            else {
+                new_tokens.push_back("FALSE");
+            }
+
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "UNEQ") {
+            if (tokens[pos - 1] != tokens[pos + 1]) {
+                new_tokens.push_back("TRUE");
+            }
+
+            else {
+                new_tokens.push_back("FALSE");
+            }
+
+            pos = pos + 2;
+        }
+        
+        else if (tokens[pos] == "AND") {
+            new_tokens.push_back("AND");
+            pos = pos + 1;
+        }
+
+        else if (tokens[pos] == "OR") {
+            new_tokens.push_back("OR");
+            pos = pos + 1;
+        }
+
+        else if (tokens[pos] == "TRUE" && tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
+            new_tokens.push_back("TRUE");
+            pos = pos + 1;
+        }
+
+        else if (tokens[pos] == "FALSE" && tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
+            new_tokens.push_back("FALSE");
+            pos = pos + 1;
+        }
+
+        else {
+            pos = pos + 1;
+        }
+    }
+
+    pos = 0;
+    tokens = new_tokens;
+    new_tokens.clear();
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "OR") {
+            if (tokens[pos - 1] == "TRUE" || tokens[pos + 1] == "TRUE") {
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.insert(tokens.begin() + 0, {"TRUE"});
+            }
+
+            else {
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.insert(tokens.begin() + 0, {"FALSE"});
+            }
+        }
+
+        else if (tokens[pos] == "AND") {
+            if (tokens[pos - 1] == "TRUE" && tokens[pos + 1] == "TRUE") {
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.insert(tokens.begin() + 0, {"TRUE"});
+            }
+
+            else {
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.erase(tokens.begin() + 0);
+                tokens.insert(tokens.begin() + 0, {"FALSE"});
+            }
+        }
+
+        else {
+            pos = pos + 1;
+        }
+    }
+
     if (tokens.size() == 1) {
         if (tokens[0] == "TRUE") {
             return true;
-        }
-
-        else if (tokens[0] == "FALSE") {
-            return false;
-        }
-    }
-
-    else if (tokens.size() == 2) {
-        if (tokens[0] == "VAR") {
-            if (variables[tokens[1]] == "TRUE") {
-                return true;
-            }
-
-            if (variables[tokens[1]] == "FALSE") {
-                return false;
-            }
-        }
-    }
-
-    else if (tokens.size() == 3) {
-        if (tokens[1] == "EQEQ") {
-            if (tokens[0] == tokens[2]) {
-                return true;
-            }
-
-            else {
-                return false;
-            }
-        }
-
-        if (tokens[1] == "UNEQ") {
-            if (tokens[0] != tokens[2]) {
-                return true;
-            }
-
-            else {
-                return false;
-            }
-        }
-    }
-
-    else if (tokens.size() == 4) {
-        if (tokens[0] == "VAR") {
-            if (tokens[2] == "EQEQ") {
-                if (variables[tokens[1]] == tokens[3]) {
-                    return true;
-                }
-
-                else {
-                    return false;
-                }
-            }
-
-            else if (tokens[2] == "UNEQ") {
-                if (variables[tokens[1]] != tokens[3]) {
-                    return true;
-                }
-
-                else {
-                    return false;
-                }
-            }
-        }
-
-        else if (tokens [2] == "VAR") {
-            if (tokens[1] == "EQEQ") {
-                if (tokens[0] == variables[tokens[3]]) {
-                    return true;
-                }
-
-                else {
-                    return false;
-                }
-            }
-
-            else if (tokens[1] == "UNEQ") {
-                if (tokens[0] != variables[tokens[3]]) {
-                    return true;
-                }
-
-                else {
-                    return false;
-                }
-            }
         }
 
         else {
@@ -330,29 +419,9 @@ bool condition_parser(vector <string> tokens) {
         }
     }
 
-    else if (tokens.size() == 5) {
-        if (tokens[2] == "EQEQ") {
-            if (variables[tokens[1]] == variables[tokens[4]]) {
-                return true;
-            }
-
-            else {
-                return false;
-            }
-        }
-
-        else if (tokens[2] == "UNEQ") {
-            if (variables[tokens[1]] != variables[tokens[4]]) {
-                return true;
-            }
-
-            else {
-                return false;
-            }
-        }
+    else {
+        return false;
     }
-
-    return false;
 }
 
 vector <string> lexer(string code) {
@@ -364,34 +433,34 @@ vector <string> lexer(string code) {
     string task = "";
     string condition = "";
     int ignore = 0;
-    int string_state = 0;
-    int task_state = 0;
-    int condition_state = 0;
-    int variable_state = 0;
-    int func_state = 0;
+    bool string_state = false;
+    bool task_state = false;
+    bool condition_state = false;
+    bool variable_state = false;
+    bool func_state = false;
 
     for(char& chr : code) {
         token = token + chr;
 
-        if (token == "]") {
-            if (ignore >= 1) {
-                task = task + "]";
+        if (token == "}") {
+            if (ignore > false) {
+                task = task + "}";
                 ignore = ignore - 1;
             }
 
             else {
                 tokens.push_back(task);
-                task_state = 0;
+                task_state = false;
                 task = "";
             }
 
             token = "";
         }
 
-        else if (token == "[") {
+        else if (token == "{") {
             if (func_name != "") {
                 tokens.push_back(func_name);
-                func_state = 0;
+                func_state = false;
                 func_name = "";
             }
 
@@ -407,7 +476,7 @@ vector <string> lexer(string code) {
             token = "";
         }
 
-        else if (task_state == 1) {
+        else if (task_state == true) {
             task = task + token;
             token = "";
         }
@@ -415,23 +484,23 @@ vector <string> lexer(string code) {
         else if (token == ")") {
             tokens.push_back("<CEX>");
             tokens.push_back(condition);
-            condition_state = 0;
+            condition_state = false;
             condition = "";
             token = "";
         }
 
-        else if (condition_state == 1) {
+        else if (condition_state == true) {
             condition = condition + token;
             token = "";
         }
 
         else if (token == "(") {
-            condition_state = 1;
+            condition_state = true;
             token = "";
         }
 
         else if (token == " ") {
-            if (string_state == 0) {
+            if (string_state == false) {
                 token = "";
             }
 
@@ -441,108 +510,112 @@ vector <string> lexer(string code) {
         }
 
         else if (token == "\n" || token == "<EOF>") {
-            if (var_name != "") {
-                tokens.push_back(var_name);
-                variable_state = 0;
-                var_name = "";
-            }
-
             token = "";
         }
 
         else if (token == "\"" || token == " \"") {
             token = "";
 
-            if (string_state == 0) {
-                string_state = 1;
+            if (string_state == false) {
+                string_state = true;
             }
 
-            else if (string_state == 1) {
+            else if (string_state == true) {
                 tokens.push_back(str);
-                string_state = 0;
+                string_state = false;
                 str = "";
             }
         }
 
-        else if (string_state == 1) {
+        else if (string_state == true) {
             str = str + token;
             token = "";
         }
 
-        else if (token == "TRUE") {
-            tokens.push_back("TRUE");
+        else if (func_state == true) {
+            func_name = func_name + token;
             token = "";
         }
 
-        else if (token == "FALSE") {
-            tokens.push_back("FALSE");
-            token = "";
-        }
-
-        else if (token == "INCLUDE") {
-            tokens.push_back("INCLUDE");
-            token = "";
-        }
-
-        else if (token == "FUNC") {
-            tokens.push_back("FUNC");
-            token = "";
-            func_state = 1;
-        }
-
-        else if (token == "RUN") {
-            tokens.push_back("RUN");
-            token = "";
-        }
-
-        else if (token == "PRINT") {
-            tokens.push_back("PRINT");
-            token = "";
-        }
-
-        else if (token == "INPUT") {
-            tokens.push_back("INPUT");
-            token = "";
-        }
-
-        else if (token == "SYSTEM") {
-            tokens.push_back("SYSTEM");
-            token = "";
-        }
-
-        else if (token == "VAR" && string_state == 0) {
-            tokens.push_back("VAR");
-            token = "";
-            variable_state = 1;
-        }
-
-        else if (token == "WHILE") {
-            tokens.push_back("WHILE");
-            token = "";
-        }
-
-        else if (token == "IF") {
-            tokens.push_back("IF");
-            token = "";
-        }
-
-        else if (token == "=" && string_state == 0) {
+        else if (token == "=") {
             if (var_name != "") {
                 tokens.push_back(var_name);
-                variable_state = 0;
+                variable_state = false;
                 var_name = "";
             }
 
             token = "";
         }
 
-        else if (func_state == 1) {
-            func_name = func_name + token;
+        else if (variable_state == true) {
+            var_name = var_name + token;
             token = "";
         }
 
-        else if (variable_state == 1) {
-            var_name = var_name + token;
+        else if (token == "true") {
+            tokens.push_back("TRUE");
+            token = "";
+        }
+
+        else if (token == "false") {
+            tokens.push_back("FALSE");
+            token = "";
+        }
+
+        else if (token == "include") {
+            tokens.push_back("INCLUDE");
+            token = "";
+        }
+
+        else if (token == "func") {
+            tokens.push_back("FUNC");
+            token = "";
+            func_state = 1;
+        }
+
+        else if (token == "start") {
+            tokens.push_back("START");
+            token = "";
+        }
+
+        else if (token == "print") {
+            tokens.push_back("PRINT");
+            token = "";
+        }
+
+        else if (token == "input") {
+            tokens.push_back("INPUT");
+            token = "";
+        }
+
+        else if (token == "system") {
+            tokens.push_back("SYSTEM");
+            token = "";
+        }
+
+        else if (token == "var") {
+            tokens.push_back("VAR");
+            token = "";
+            variable_state = 1;
+        }
+
+        else if (token == "while") {
+            tokens.push_back("WHILE");
+            token = "";
+        }
+
+        else if (token == "for") {
+            tokens.push_back("FOR");
+            token = "";
+        }
+
+        else if (token == "if") {
+            tokens.push_back("IF");
+            token = "";
+        }
+
+        else if (token == "else") {
+            tokens.push_back("ELSE");
             token = "";
         }
     }
@@ -551,11 +624,12 @@ vector <string> lexer(string code) {
 }
 
 void parser(vector <string> tokens) {
-    vector <string> tokens_2;
+    vector <string> new_tokens;
+    vector <string> task_tokens;
     vector <string> condition_tokens;
     vector <string> expression_tokens;
     string code = "";
-    bool condition;
+    bool condition = false;
     int pos = 0;
 
     while (true) {
@@ -571,8 +645,8 @@ void parser(vector <string> tokens) {
 
         else if (tokens[pos] == "INCLUDE") {
             code = open_file(tokens[pos + 1]);
-            tokens_2 = lexer(code);
-            parser(tokens_2);
+            new_tokens = lexer(code);
+            parser(new_tokens);
             pos = pos + 2;
         }
 
@@ -581,11 +655,19 @@ void parser(vector <string> tokens) {
             pos = pos + 3;
         }
 
-        else if (tokens[pos] == "RUN") {
-            tokens_2.clear();
-            tokens_2 = lexer(functions[tokens[pos + 2]]);
-            parser(tokens_2);
-            pos = pos + 3;
+        else if (tokens[pos] == "START") {
+            new_tokens.clear();
+
+            if (tokens[pos + 1] == "<CEX>") {
+                new_tokens = lexer(functions[tokens[pos + 2]]);
+                pos = pos + 3;
+            }
+
+            else {
+                break;
+            }
+
+            parser(new_tokens);
         }
 
         else if (tokens[pos] == "PRINT") {
@@ -652,34 +734,98 @@ void parser(vector <string> tokens) {
 
         else if (tokens[pos] == "WHILE") {
             condition_tokens.clear();
-            condition = 0;
+            condition = false;
 
             condition_tokens = condition_lexer(tokens[pos + 2]);
             condition = condition_parser(condition_tokens);
 
             if (condition == true) {
-                tokens_2 = lexer(tokens[pos + 3]);
-                parser(tokens_2);
+                new_tokens = lexer(tokens[pos + 3]);
+                parser(new_tokens);
             }
 
             else {
-                pos = pos + 3;
+                pos = pos + 4;
             }
+        }
+
+        else if (tokens[pos] == "FOR") {
+            string text;
+
+            new_tokens.clear();
+            new_tokens = condition_lexer(tokens[pos + 2]);
+
+            if (new_tokens[3] == "VAR") {
+                text = variables[new_tokens[4]];
+            }
+
+            else {
+                text = new_tokens[3];
+            }
+
+            for (char& chr : text) {
+                variables[new_tokens[1]] = chr;
+                task_tokens = lexer(tokens[pos + 3]);
+                parser(task_tokens);
+            }
+
+            pos = pos + 4;
         }
 
         else if (tokens[pos] == "IF") {
             condition_tokens.clear();
-            condition = 0;
+            condition = false;
 
             condition_tokens = condition_lexer(tokens[pos + 2]);
             condition = condition_parser(condition_tokens);
 
             if (condition == true) {
-                tokens_2 = lexer(tokens[pos + 3]);
-                parser(tokens_2);
+                new_tokens = lexer(tokens[pos + 3]);
+                parser(new_tokens);
             }
 
-            pos = pos + 3;
+            pos = pos + 4;
+        }
+
+        else if (tokens[pos] == "ELSE") {
+            if (tokens[pos + 1] == "IF") {
+                if (tokens[pos - 4] == "IF") {
+                    condition_tokens.clear();
+                    condition = false;
+
+                    condition_tokens = condition_lexer(tokens[pos - 2]);
+                    condition = condition_parser(condition_tokens);
+
+                    if (condition == false) {
+                        condition_tokens = condition_lexer(tokens[pos + 3]);
+                        condition = condition_parser(condition_tokens);
+
+                        if (condition == true) {
+                            new_tokens = lexer(tokens[pos + 4]);
+                            parser(new_tokens);
+                        }
+                    }
+
+                    pos = pos + 5;
+                }
+            }
+
+            else {
+                if (tokens[pos - 4] == "IF") {
+                    condition_tokens.clear();
+                    condition = false;
+
+                    condition_tokens = condition_lexer(tokens[pos - 2]);
+                    condition = condition_parser(condition_tokens);
+
+                    if (condition == false) {
+                        new_tokens = lexer(tokens[pos + 1]);
+                        parser(new_tokens);
+                    }
+
+                    pos = pos + 4;
+                }
+            }
         }
 
         else if (tokens[pos] == "VAR") {
@@ -736,7 +882,6 @@ int main(int argc, char** argv) {
     string code;
     string arg1 = "";
     string arg2 = "";
-    string arg3 = "";
 
     if (argc > 1) {
         arg1 = argv[1];
@@ -752,16 +897,12 @@ int main(int argc, char** argv) {
         arg2 = argv[2];
     }
 
-    if (argc > 3) {
-        arg3 = argv[3];
-    }
-
     // filename = "test.aenc";
 
     code = open_file(arg1);
     tokens = lexer(code);
 
-    if(arg2 == "--info" || arg3 == "--info") {
+    if(arg2 == "--info") {
         end = chrono::system_clock::now();
 
         elapsed_seconds = end - start;
@@ -772,7 +913,7 @@ int main(int argc, char** argv) {
 
     parser(tokens);
 
-    if(arg2 == "--info" || arg3 == "--info") {
+    if(arg2 == "--info") {
         end = chrono::system_clock::now();
 
         elapsed_seconds = end - start;
