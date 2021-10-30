@@ -1,1 +1,5 @@
-print ("Hello, World!")
+include "ioaenc"
+
+func main() {
+    ioaenc.print("Hello, World!")
+}
