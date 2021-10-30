@@ -1,0 +1,7 @@
+func time() {
+    return system("C:\AeNC\include\datetime\main.exe --time")
+}
+
+func date() {
+    return system("C:\AeNC\include\datetime\main.exe --date")
+}
