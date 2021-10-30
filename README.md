@@ -11,23 +11,31 @@ main <filename>
 ## Examples
 # Hello World
 ``` basic
-print ("Hello, World!")
+include "ioaenc"
+
+func main() {
+    ioaenc.print("Hello, World!")
+}
 ```
 
 # Command Prompt
 ``` basic
-var destroyed = false
+include "ioaenc"
 
-while (not var destroyed) {
-    var command = input ("> ")
+func main() {
+    var destroyed = false
 
-    id (var command == "EXIT") {
-        print ("Exiting...")
-        var destroyed = true
-    }
+    while (not var destroyed) {
+        var command = ioaenc.input(">")
 
-    if (var command != "EXIT") {
-        system (var command)
+        id (var command == "exit") {
+            ioaenc.print("Exiting...")
+            var destroyed = true
+        }
+
+        if (var command != "exit") {
+            system(var command)
+        }
     }
 }
 ```
