@@ -1,2 +1,2 @@
 all:
-	g++ -o bin/main src/*.cpp -lmingw32
+	g++ -o main src/*.cpp -lmingw32
