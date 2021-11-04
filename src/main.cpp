@@ -1405,11 +1405,9 @@ int main(int argc, char **argv) {
     }
 
     if (arg1 == "--version") {
-        cout << "AeNC 0.0.7" << endl;
+        cout << "AeNC 0.0.8" << endl;
         return 0;
     }
-
-    // filename = "test.aenc";
 
     code = open_file(arg1);
     tokens = lexer(code);
