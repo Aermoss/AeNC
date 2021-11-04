@@ -7,3 +7,7 @@ func input(var text) {
     
     return system("C:\AeNC\include\ioaenc\main.exe --input")
 }
+
+func _print(var text) {
+    system("echo " + var text)
+}

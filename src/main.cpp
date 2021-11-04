@@ -154,8 +154,10 @@ vector <string> expression_lexer(string expression) {
     string token = "";
     string var_name = "";
     string str = "";
+    string condition;
     bool variable_state = false;
     bool string_state = false;
+    bool condition_state = false;
 
     expression = expression + "<EOF>";
 
@@ -163,7 +165,7 @@ vector <string> expression_lexer(string expression) {
         token = token + chr;
 
         if (token == " ") {
-            if (string_state == true) {
+            if (string_state == true || condition_state == true) {
                 str = str + " ";
             }
         }
@@ -175,6 +177,24 @@ vector <string> expression_lexer(string expression) {
                 var_name = "";
             }
 
+            token = "";
+        }
+
+        else if (token == ")") {
+            tokens.push_back("<CEX>");
+            tokens.push_back(condition);
+            condition_state = false;
+            condition = "";
+            token = "";
+        }
+
+        else if (condition_state == true) {
+            condition = condition + token;
+            token = "";
+        }
+
+        else if (token == "(") {
+            condition_state = true;
             token = "";
         }
 
@@ -203,6 +223,11 @@ vector <string> expression_lexer(string expression) {
 
             else if (token == "\\q") {
                 str = str + "\"";
+                token = "";
+            }
+
+            else if (token == "\\n") {
+                str = str + "\n";
                 token = "";
             }
 
@@ -246,6 +271,21 @@ vector <string> expression_lexer(string expression) {
             var_name = var_name + token;
             token = "";
         }
+
+        else if (token == "system") {
+            tokens.push_back("SYSTEM");
+            token = "";
+        }
+
+        else {
+            for (auto const& i : functions) {
+                if (token == i.first) {
+                    tokens.push_back("START");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
+        }
     }
 
     return tokens;
@@ -253,7 +293,10 @@ vector <string> expression_lexer(string expression) {
 
 string expression_parser(vector <string> tokens) {
     vector <string> new_tokens;
+    vector <string> expression_tokens;
     string result;
+    string chached_variable;
+    string input;
     int pos = 0;
 
     while (true) {
@@ -274,6 +317,28 @@ string expression_parser(vector <string> tokens) {
 
     pos = 0;
     tokens = new_tokens;
+    new_tokens.clear();
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "<CEX>") {
+            expression_tokens = expression_lexer(tokens[pos + 1]);
+            new_tokens.push_back(expression_parser(expression_tokens));
+            pos = pos + 2;
+        }
+
+        else {
+            new_tokens.push_back(tokens[pos]);
+            pos = pos + 1;
+        }
+    }
+
+    pos = 0;
+    tokens = new_tokens;
+    new_tokens.clear();
 
     result = tokens[pos];
 
@@ -282,7 +347,7 @@ string expression_parser(vector <string> tokens) {
             break;
         }
 
-        if (tokens[pos] == "PLUS") {
+        else if (tokens[pos] == "PLUS") {
             result = result + tokens[pos + 1];
             pos = pos + 2;
         }
@@ -302,6 +367,7 @@ vector <string> condition_lexer(string condition) {
     string str = "";
     bool variable_state = false;
     bool string_state = false;
+    bool condition_state = false;
 
     condition = condition + "<EOF>";
 
@@ -355,6 +421,11 @@ vector <string> condition_lexer(string condition) {
                 token = "";
             }
 
+            else if (token == "\\n") {
+                str = str + "\n";
+                token = "";
+            }
+
             else if (token == "\\\\") {
                 str = str + "\\";
                 token = "";
@@ -404,6 +475,11 @@ vector <string> condition_lexer(string condition) {
 
         else if (token == "or") {
             tokens.push_back("OR");
+            token = "";
+        }
+
+        else if (token == "not") {
+            tokens.push_back("NOT");
             token = "";
         }
     }
@@ -505,13 +581,31 @@ bool condition_parser(vector <string> tokens) {
             pos = pos + 1;
         }
 
-        else if (tokens[pos] == "TRUE" && tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
-            new_tokens.push_back("TRUE");
+        else if (tokens[pos] == "TRUE") {
+            if (tokens.size() - 1 != pos) {
+                if (tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
+                    new_tokens.push_back("TRUE");
+                }
+            }
+
+            else {
+                new_tokens.push_back("TRUE");
+            }
+
             pos = pos + 1;
         }
 
         else if (tokens[pos] == "FALSE" && tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
-            new_tokens.push_back("FALSE");
+            if (tokens.size() - 1 != pos) {
+                if (tokens[pos + 1] != "EQEQ" && tokens[pos + 1] != "UNEQ") {
+                    new_tokens.push_back("FALSE");
+                }
+            }
+
+            else {
+                new_tokens.push_back("FALSE");
+            }
+
             pos = pos + 1;
         }
 
@@ -586,8 +680,10 @@ vector <string> argument_lexer(string condition) {
     string token = "";
     string var_name = "";
     string str = "";
+    string condition_2 = "";
     bool variable_state = false;
     bool string_state = false;
+    bool condition_state = false;
 
     condition = condition + "<EOF>";
 
@@ -595,7 +691,13 @@ vector <string> argument_lexer(string condition) {
         token = token + chr;
 
         if (token == " " || token == "\n") {
-            if (string_state == false) {
+            if (token == " ") {
+                if (string_state == false && condition_state == false) {
+                    token = "";
+                }
+            }
+
+            else {
                 token = "";
             }
         }
@@ -610,7 +712,29 @@ vector <string> argument_lexer(string condition) {
             token = "";
         }
 
+        else if (token == ")") {
+            tokens.push_back("<CEX>");
+            tokens.push_back(condition_2);
+            condition_state = false;
+            condition_2 = "";
+            token = "";
+        }
+
+        else if (condition_state == true) {
+            condition_2 = condition_2 + token;
+            token = "";
+        }
+
+        else if (token == "(") {
+            condition_state = true;
+            token = "";
+        }
+
         else if (token == "\"" || token == " \"" || token == "\\\"") {
+            if (token == " \"") {
+                str = str + " ";
+            }
+
             if (string_state == true) {
                 tokens.push_back(str);
                 str = "";
@@ -631,6 +755,11 @@ vector <string> argument_lexer(string condition) {
 
             else if (token == "\\q") {
                 str = str + "\"";
+                token = "";
+            }
+
+            else if (token == "\\n") {
+                str = str + "\n";
                 token = "";
             }
 
@@ -668,6 +797,21 @@ vector <string> argument_lexer(string condition) {
             var_name = var_name + token;
             token = "";
         }
+
+        else if (token == "system") {
+            tokens.push_back("SYSTEM");
+            token = "";
+        }
+
+        else {
+            for (auto const& i : functions) {
+                if (token == i.first) {
+                    tokens.push_back("START");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
+        }
     }
 
     return tokens;
@@ -675,6 +819,7 @@ vector <string> argument_lexer(string condition) {
 
 map <string, string> argument_parser(vector <string> tokens, vector <string> tokens_2) {
     map <string, string> temp_variables;
+    vector <string> expression_tokens;
     int pos = 0;
     int pos_2 = 0;
 
@@ -686,6 +831,13 @@ map <string, string> argument_parser(vector <string> tokens, vector <string> tok
         else if (tokens[pos] == "VAR") {
             if (tokens_2[pos_2] == "VAR") {
                 temp_variables[tokens[pos + 1]] = variables[tokens_2[pos_2 + 1]];
+                pos = pos + 3;
+                pos_2 = pos_2 + 3;
+            }
+
+            else if (tokens_2[pos_2] == "<CEX>") {
+                expression_tokens = expression_lexer(tokens_2[pos_2 + 1]);
+                temp_variables[tokens[pos + 1]] = expression_parser(expression_tokens);
                 pos = pos + 3;
                 pos_2 = pos_2 + 3;
             }
@@ -717,6 +869,7 @@ vector <string> lexer(string code, string lib_name = "") {
     string new_code = "";
     string new_lib_name = "";
     int ignore = 0;
+    int ignore_2 = 0;
     bool string_state = false;
     bool task_state = false;
     bool condition_state = false;
@@ -728,7 +881,7 @@ vector <string> lexer(string code, string lib_name = "") {
         token = token + chr;
 
         if (token == "}") {
-            if (ignore > false) {
+            if (ignore > 0) {
                 task = task + "}";
                 ignore = ignore - 1;
             }
@@ -743,15 +896,12 @@ vector <string> lexer(string code, string lib_name = "") {
         }
 
         else if (token == "{") {
-            if (task_state == 1) {
+            if (task_state == true) {
                 task = task + token;
                 ignore = ignore + 1;
             }
 
-            else {
-                task_state = 1;
-            }
-
+            task_state = true;
             token = "";
         }
 
@@ -761,15 +911,18 @@ vector <string> lexer(string code, string lib_name = "") {
         }
 
         else if (token == ")") {
-            tokens.push_back("<CEX>");
-            tokens.push_back(condition);
-            condition_state = false;
-            condition = "";
-            token = "";
-        }
+            if (ignore_2 > 0) {
+                condition = condition + ")";
+                ignore_2 = ignore_2 - 1;
+            }
 
-        else if (condition_state == true) {
-            condition = condition + token;
+            else {
+                tokens.push_back("<CEX>");
+                tokens.push_back(condition);
+                condition_state = false;
+                condition = "";
+            }
+
             token = "";
         }
 
@@ -789,7 +942,18 @@ vector <string> lexer(string code, string lib_name = "") {
                 func_name = "";
             }
 
+            if (condition_state == true) {
+                ignore_2 = ignore_2 + 1;
+                condition = condition + "(";
+            }
+
             condition_state = true;
+
+            token = "";
+        }
+
+        else if (condition_state == true) {
+            condition = condition + token;
             token = "";
         }
 
@@ -865,6 +1029,11 @@ vector <string> lexer(string code, string lib_name = "") {
                 token = "";
             }
 
+            else if (token == "\\n") {
+                str = str + "\n";
+                token = "";
+            }
+
             else if (token == "\\\\") {
                 str = str + "\\";
                 token = "";
@@ -915,11 +1084,6 @@ vector <string> lexer(string code, string lib_name = "") {
 
         else if (token == "false") {
             tokens.push_back("FALSE");
-            token = "";
-        }
-
-        else if (token == "start") {
-            tokens.push_back("START");
             token = "";
         }
 
@@ -1023,8 +1187,6 @@ string parser(vector <string> tokens) {
         }
 
         else if (tokens[pos] == "RETURN") {
-            string input;
-
             if (tokens[pos + 1] == "VAR") {
                 result = variables[tokens[pos + 2]];
                 pos = pos + 3;
@@ -1036,39 +1198,19 @@ string parser(vector <string> tokens) {
                     result = execute(expression_parser(expression_tokens));
                     pos = pos + 4;
                 }
-
-                else if (tokens[pos + 2] == "VAR") {
-                    result = execute(variables[tokens[pos + 3]]);
-                    pos = pos + 4;
-                }
-
-                else {
-                    result = execute(tokens[pos + 2]);
-                    pos = pos + 3;
-                }
             }
 
-            else if (tokens[pos + 1] == "INPUT") {
-                if (tokens[pos + 2] == "<CEX>") {
-                    expression_tokens = expression_lexer(tokens[pos + 3]);
-                    cout << expression_parser(expression_tokens);
+            else if (tokens[pos + 1] == "START") {
+                if (tokens[pos + 3] == "<CEX>") {
+                    chached_variables = variables;
+                    variables = argument_parser(argument_lexer(function_arguments[tokens[pos + 2]]), argument_lexer(tokens[pos + 4]));
+                    new_tokens = lexer(functions[tokens[pos + 2]]);
+                    chached_variable = parser(new_tokens);
+                    variables = chached_variables;
+                    result = chached_variable;
                 }
 
-                else {
-                    cout << tokens[pos + 2];
-                }
-                
-                getline(cin >> ws, input);
-
-                result = input;
-
-                if (tokens[pos + 2] == "<CEX>") {
-                    pos = pos + 4;
-                }
-
-                else {
-                    pos = pos + 3;
-                }
+                pos = pos + 5;
             }
 
             else if (tokens[pos + 1] == "<CEX>") {
@@ -1101,11 +1243,6 @@ string parser(vector <string> tokens) {
             if (tokens[pos + 1] == "<CEX>") {
                 expression_tokens = expression_lexer(tokens[pos + 2]);
                 system(expression_parser(expression_tokens).c_str());
-                pos = pos + 3;
-            }
-
-            else if (tokens[pos + 1] == "VAR") {
-                system(variables[tokens[pos + 2]].c_str());
                 pos = pos + 3;
             }
         }
@@ -1201,8 +1338,6 @@ string parser(vector <string> tokens) {
         }
 
         else if (tokens[pos] == "VAR") {
-            string input;
-
             if (tokens[pos + 2] == "VAR") {
                 variables[tokens[pos + 1]] = variables[tokens[pos + 3]];
                 pos = pos + 4;
@@ -1214,23 +1349,6 @@ string parser(vector <string> tokens) {
                     variables[tokens[pos + 1]] = execute(expression_parser(expression_tokens));
                     pos = pos + 5;
                 }
-
-                else if (tokens[pos + 3] == "VAR") {
-                    variables[tokens[pos + 1]] = execute(variables[tokens[pos + 4]]);
-                    pos = pos + 5;
-                }
-            }
-
-            else if (tokens[pos + 2] == "INPUT") {
-                if (tokens[pos + 3] == "<CEX>") {
-                    expression_tokens = expression_lexer(tokens[pos + 4]);
-                    cout << expression_parser(expression_tokens);
-                    pos = pos + 5;
-                }
-                
-                getline(cin >> ws, input);
-
-                variables[tokens[pos + 1]] = input;
             }
 
             else if (tokens[pos + 2] == "START") {
@@ -1295,7 +1413,7 @@ int main(int argc, char **argv) {
 
     code = open_file(arg1);
     tokens = lexer(code);
-
+    
     if(arg2 == "--info") {
         end = chrono::system_clock::now();
 
