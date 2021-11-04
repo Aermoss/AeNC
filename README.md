@@ -28,7 +28,7 @@ func main() {
     while (not var destroyed) {
         var command = ioaenc.input(">")
 
-        id (var command == "exit") {
+        if (var command == "exit") {
             ioaenc.print("Exiting...")
             var destroyed = true
         }
