@@ -10,7 +10,7 @@ main <filename>
 
 ## Examples
 # Hello World
-``` basic
+``` go
 include "ioaenc"
 
 func main() {
@@ -19,22 +19,23 @@ func main() {
 ```
 
 # Command Prompt
-``` basic
+``` go
 include "ioaenc"
 
 func main() {
+    var command = ""
     var destroyed = false
 
-    while (not var destroyed) {
-        var command = ioaenc.input(">")
+    while (not destroyed) {
+        command = ioaenc.input(">")
 
-        if (var command == "exit") {
+        if (command == "exit") {
             ioaenc.print("Exiting...")
-            var destroyed = true
+            destroyed = true
         }
 
-        if (var command != "exit") {
-            system(var command)
+        if (command != "exit") {
+            system(command)
         }
     }
 }
