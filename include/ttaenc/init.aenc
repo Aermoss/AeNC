@@ -1,9 +1,9 @@
 func resize(var cols, var lines) {
-    system("mode con:cols=" + var cols + " lines=" + var lines)
+    system("mode con:cols=" + cols + " lines=" + lines)
 }
 
 func set_title(var title) {
-    system("title " + var title)
+    system("title " + title)
 }
 
 func getch() {

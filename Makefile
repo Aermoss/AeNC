@@ -1,2 +1,3 @@
 all:
-	g++ -o main src/*.cpp -lmingw32
+	g++ -o bin/main src/*.cpp -lmingw32
+	bin\main test.aenc

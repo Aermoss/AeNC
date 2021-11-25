@@ -10,6 +10,10 @@
 #include <sys/stat.h>
 #include <direct.h>
 #include <limits.h>
+#include <cstdio>
+#include <memory>
+#include <stdexcept>
+#include <array>
 
 using namespace std;
 
@@ -18,6 +22,7 @@ map <string, string> chached_variables;
 map <string, string> functions;
 map <string, string> function_arguments;
 
+vector <string> pre_var;
 vector <string> pre_func;
 
 string open_file(string filename) {
@@ -36,18 +41,24 @@ string open_file(string filename) {
     return code;
 }
 
-string execute(const string& command) {
-    system((command + " > temp.aenc").c_str());
- 
-    ifstream ifs("temp.aenc");
-    string ret{ istreambuf_iterator<char>(ifs), istreambuf_iterator<char>() };
-    ifs.close();
+string execute(string command) {
+    array <char, 128> buffer;
+    string result;
 
-    if (remove("temp.aenc") != 0) {
-        cout << "Error while deleting temporary file." <<  endl;
+    FILE* pipe = popen(command.c_str(), "r");
+
+    if (!pipe) {
+        cout << "\033[31m" << "Couldn't start command." << "\033[0m" <<  endl;
+        return 0;
     }
 
-    return ret;
+    while (fgets(buffer.data(), 128, pipe) != NULL) {
+        result = result + buffer.data();
+    }
+
+    auto returnCode = pclose(pipe);
+
+    return result;
 }
 
 bool is_file_exists(const std::string& filename) {
@@ -285,6 +296,22 @@ vector <string> expression_lexer(string expression) {
                     token = "";
                 }
             }
+
+            for (auto const& i : variables) {
+                if (token == i.first) {
+                    tokens.push_back("VAR");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
+
+            for (string i : pre_var) {
+                if (token == i) {
+                    tokens.push_back("VAR");
+                    tokens.push_back(i);
+                    token = "";
+                }
+            }
         }
     }
 
@@ -481,6 +508,24 @@ vector <string> condition_lexer(string condition) {
         else if (token == "not") {
             tokens.push_back("NOT");
             token = "";
+        }
+
+        else {
+            for (auto const& i : functions) {
+                if (token == i.first) {
+                    tokens.push_back("START");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
+
+            for (auto const& i : variables) {
+                if (token == i.first) {
+                    tokens.push_back("VAR");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
         }
     }
 
@@ -782,7 +827,6 @@ vector <string> argument_lexer(string condition) {
             }
 
             tokens.push_back("COMMA");
-
             token = "";
         }
 
@@ -807,6 +851,14 @@ vector <string> argument_lexer(string condition) {
             for (auto const& i : functions) {
                 if (token == i.first) {
                     tokens.push_back("START");
+                    tokens.push_back(i.first);
+                    token = "";
+                }
+            }
+
+            for (auto const& i : variables) {
+                if (token == i.first) {
+                    tokens.push_back("VAR");
                     tokens.push_back(i.first);
                     token = "";
                 }
@@ -850,16 +902,39 @@ map <string, string> argument_parser(vector <string> tokens, vector <string> tok
         }
 
         else {
-            cout << "Error." << endl;
+            cout << "\033[31m" << "Warning: skipped token" << "\033[0m" << endl;
         }
     }
 
     return temp_variables;
 }
 
+vector <string> argument_parser_2(vector <string> tokens) {
+    vector <string> temp_var;
+    int pos = 0;
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "VAR") {
+            temp_var.push_back(tokens[pos + 1]);
+            pos = pos + 3;
+        }
+
+        else {
+            cout << "\033[31m" << "Warning: skipped token" << "\033[0m" << endl;
+        }
+    }
+
+    return temp_var;
+}
+
 vector <string> lexer(string code, string lib_name = "") {
     vector <string> tokens;
     vector <string> new_tokens;
+    vector <string> temp_var;
     string token = "";
     string str = "";
     string var_name = "";
@@ -878,6 +953,22 @@ vector <string> lexer(string code, string lib_name = "") {
     bool lib_state = false;
 
     for(char& chr : code) {
+        if (chr == '\n') {
+            if (token != "" || var_name != "" || func_name != "" || variable_state || func_state) {
+                cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                tokens.clear();
+                return tokens;
+            }
+        }
+
+        if (token == "<EOF>") {
+            if (string_state || task_state || condition_state || variable_state || func_state || ignore != 0 || ignore_2 != 0 || var_name != "" || func_name != "" || task != "" || str != "" || condition != "") {
+                cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                tokens.clear();
+                return tokens;
+            }
+        }
+
         token = token + chr;
 
         if (token == "}") {
@@ -998,6 +1089,7 @@ vector <string> lexer(string code, string lib_name = "") {
                             pre_func.push_back(new_tokens[pos + 1]);
                             functions[new_tokens[pos + 1]] = new_tokens[pos + 4];
                             function_arguments[new_tokens[pos + 1]] = new_tokens[pos + 3];
+                            temp_var = argument_parser_2(argument_lexer(new_tokens[pos + 3]));
                             pos = pos + 5;
                         }
                         
@@ -1054,10 +1146,12 @@ vector <string> lexer(string code, string lib_name = "") {
             if (var_name != "") {
                 if (lib_name != "") {
                     tokens.push_back(lib_name + "." + var_name);
+                    pre_var.push_back(lib_name + "." + var_name);
                 }
 
                 else {
                     tokens.push_back(var_name);
+                    pre_var.push_back(var_name);
                 }
 
                 variable_state = false;
@@ -1138,6 +1232,22 @@ vector <string> lexer(string code, string lib_name = "") {
             for (string i : pre_func) {
                 if (token == i) {
                     tokens.push_back("START");
+                    tokens.push_back(i);
+                    token = "";
+                }
+            }
+
+            for (string i : pre_var) {
+                if (token == i) {
+                    tokens.push_back("VAR");
+                    tokens.push_back(i);
+                    token = "";
+                }
+            }
+
+            for (string i : temp_var) {
+                if (token == i) {
+                    tokens.push_back("VAR");
                     tokens.push_back(i);
                     token = "";
                 }
@@ -1375,6 +1485,11 @@ string parser(vector <string> tokens) {
                 pos = pos + 3;
             }
         }
+
+        else {
+            cout << "\033[31m" << "Warning: skipped token" << "\033[0m" << endl;
+            pos = pos + 1;
+        }
     }
 
     return result;
@@ -1395,7 +1510,7 @@ int main(int argc, char **argv) {
     }
 
     else {
-        cout << "No input files, proccess terminated." << endl;
+        cout << "\033[31m" << "No input files, proccess terminated." << "\033[0m" << endl;
 
         return 0;
     }
@@ -1405,7 +1520,7 @@ int main(int argc, char **argv) {
     }
 
     if (arg1 == "--version") {
-        cout << "AeNC 0.0.8" << endl;
+        cout << "AeNC 0.0.9" << endl;
         return 0;
     }
 

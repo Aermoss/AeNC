@@ -1,13 +1,13 @@
 func print(var text) {
-    system("C:\AeNC\include\ioaenc\main.exe --print \q" + var text + "\q --newline")
+    system("C:\AeNC\include\ioaenc\main.exe --print \q" + text + "\q --newline")
 }
 
 func input(var text) {
-    system("C:\AeNC\include\ioaenc\main.exe --print \q" + var text + "\q")
+    system("C:\AeNC\include\ioaenc\main.exe --print \q" + text + "\q")
     
     return system("C:\AeNC\include\ioaenc\main.exe --input")
 }
 
 func _print(var text) {
-    system("echo " + var text)
+    system("echo " + text)
 }

@@ -1,0 +1,17 @@
+!namespace
+
+func replace(var s, var char, var char_replace) {
+    var result = ""
+
+    for (var i in s) {
+        if (i == char) {
+            result = (result + var char_replace)
+        } 
+        
+        else {
+            result = (result + i)
+        }
+    }
+
+    return (result)
+}

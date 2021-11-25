@@ -1,0 +1,9 @@
+include "ioaenc"
+
+func hello(var name) {
+    ioaenc.print(("Hello, " + name))
+}
+
+func main() {
+    hello("World!")
+}
