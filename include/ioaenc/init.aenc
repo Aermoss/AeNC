@@ -1,13 +1,10 @@
-func print(var text) {
-    system("C:\AeNC\include\ioaenc\main.exe --print \q" + text + "\q --newline")
+include "C:\AeNC\include\ioaenc\ioaenc.dll"
+
+func print(var a) {
+    void ioaenc.print(a)
 }
 
-func input(var text) {
-    system("C:\AeNC\include\ioaenc\main.exe --print \q" + text + "\q")
-    
-    return system("C:\AeNC\include\ioaenc\main.exe --input")
-}
-
-func _print(var text) {
-    system("echo " + text)
+func input(var a) {
+    system("C:\AeNC\include\ioaenc\ioaenc.exe print \q" + a + "\q")
+    return system("C:\AeNC\include\ioaenc\ioaenc.exe input")
 }

@@ -14,16 +14,29 @@
 #include <memory>
 #include <stdexcept>
 #include <array>
+#include <tchar.h>
+#include <windows.h>
 
 using namespace std;
 
 map <string, string> variables;
 map <string, string> chached_variables;
+
 map <string, string> functions;
 map <string, string> function_arguments;
 
 vector <string> pre_var;
 vector <string> pre_func;
+
+typedef void (*func_void)();
+typedef void (*func_void_const_char_p)(const char* a);
+typedef void (*func_void_bool)(bool a);
+
+typedef const char* (*func_const_char_p)();
+typedef const char* (*func_const_char_p_const_char_p)(const char* a);
+typedef const char* (*func_const_char_p_bool)(bool a);
+
+map <string, HINSTANCE> loaded_dlls;
 
 string open_file(string filename) {
     string code = "";
@@ -41,11 +54,47 @@ string open_file(string filename) {
     return code;
 }
 
+string get_raw_name(string fullname) {
+    return fullname.substr(0, fullname.find_last_of(".")); 
+}
+
+string get_name(string path) {
+    return path.substr(path.find_last_of("/\\") + 1);
+}
+
+void load_dll(string dll_name) {
+    loaded_dlls[get_raw_name(get_name(dll_name))] = LoadLibrary((TCHAR*) dll_name.c_str());
+}
+
+func_void load_func_void(string dll_name, string func_name) {
+    return (func_void) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
+func_void_const_char_p load_func_void_const_char_p(string dll_name, string func_name) {
+    return (func_void_const_char_p) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
+func_void_bool load_func_void_bool(string dll_name, string func_name) {
+    return (func_void_bool) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
+func_const_char_p load_func_const_char_p(string dll_name, string func_name) {
+    return (func_const_char_p) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
+func_const_char_p_const_char_p load_func_const_char_p_const_char_p(string dll_name, string func_name) {
+    return (func_const_char_p_const_char_p) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
+func_const_char_p_bool load_func_const_char_p_bool(string dll_name, string func_name) {
+    return (func_const_char_p_bool) GetProcAddress(loaded_dlls[dll_name], func_name.c_str());
+}
+
 string execute(string command) {
     array <char, 128> buffer;
     string result;
 
-    FILE* pipe = popen(command.c_str(), "r");
+    FILE* pipe = _popen(command.c_str(), "r");
 
     if (!pipe) {
         cout << "\033[31m" << "Couldn't start command." << "\033[0m" <<  endl;
@@ -56,7 +105,7 @@ string execute(string command) {
         result = result + buffer.data();
     }
 
-    auto returnCode = pclose(pipe);
+    _pclose(pipe);
 
     return result;
 }
@@ -92,16 +141,6 @@ string get_directory(string path) {
     size_t found = path.find_last_of("/\\");
     
     return (path.substr(0, found));
-}
-
-string get_raw_name(string fullname) {
-    size_t lastindex = fullname.find_last_of("."); 
-
-    return fullname.substr(0, lastindex); 
-}
-
-string get_name(string path) {
-    return path.substr(path.find_last_of("/\\") + 1);
 }
 
 string lib_reader_code(string str) {
@@ -910,7 +949,7 @@ map <string, string> argument_parser(vector <string> tokens, vector <string> tok
 }
 
 vector <string> argument_parser_2(vector <string> tokens) {
-    vector <string> temp_var;
+    vector <string> temp_variables;
     int pos = 0;
 
     while (true) {
@@ -919,8 +958,12 @@ vector <string> argument_parser_2(vector <string> tokens) {
         }
 
         else if (tokens[pos] == "VAR") {
-            temp_var.push_back(tokens[pos + 1]);
-            pos = pos + 3;
+            temp_variables.push_back(tokens[pos + 1]);
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "COMMA") {
+            pos = pos + 1;
         }
 
         else {
@@ -928,7 +971,73 @@ vector <string> argument_parser_2(vector <string> tokens) {
         }
     }
 
-    return temp_var;
+    return temp_variables;
+}
+
+vector <string> argument_parser_3(vector <string> tokens) {
+    vector <string> temp_variables;
+    vector <string> expression_tokens;
+    int pos = 0;
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "VAR") {
+            temp_variables.push_back(variables[tokens[pos + 1]]);
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "<CEX>") {
+            expression_tokens = expression_lexer(tokens[pos + 1]);
+            temp_variables.push_back(expression_parser(expression_tokens));
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "COMMA") {
+            pos = pos + 1;
+        }
+
+        else {
+            temp_variables.push_back(tokens[pos]);
+            pos = pos + 1;
+        }
+    }
+
+    return temp_variables;
+}
+
+int argument_parser_4(vector <string> tokens) {
+    int count = 0;
+    int pos = 0;
+
+    while (true) {
+        if (tokens.size() <= pos) {
+            break;
+        }
+
+        else if (tokens[pos] == "VAR") {
+            count = count + 1;
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "<CEX>") {
+            count = count + 1;
+            pos = pos + 2;
+        }
+
+        else if (tokens[pos] == "COMMA") {
+            pos = pos + 1;
+        }
+
+        else {
+            count = count + 1;
+            pos = pos + 1;
+        }
+    }
+
+    return count;
 }
 
 vector <string> lexer(string code, string lib_name = "") {
@@ -943,6 +1052,8 @@ vector <string> lexer(string code, string lib_name = "") {
     string condition = "";
     string new_code = "";
     string new_lib_name = "";
+    string dll_name = "";
+    string dll_func_name = "";
     int ignore = 0;
     int ignore_2 = 0;
     bool string_state = false;
@@ -951,6 +1062,9 @@ vector <string> lexer(string code, string lib_name = "") {
     bool variable_state = false;
     bool func_state = false;
     bool lib_state = false;
+    bool call_state = false;
+    bool dll_state = false;
+    bool dll_func_state = false;
 
     for(char& chr : code) {
         if (chr == '\n') {
@@ -1018,6 +1132,13 @@ vector <string> lexer(string code, string lib_name = "") {
         }
 
         else if (token == "(") {
+            if (dll_func_state == true) {
+                tokens.push_back(dll_func_name);
+                dll_func_name = "";
+                dll_func_state = false;
+                call_state = false;
+            }
+
             if (func_name != "") {
                 if (lib_name != "") {
                     tokens.push_back(lib_name + "." + func_name);
@@ -1074,27 +1195,38 @@ vector <string> lexer(string code, string lib_name = "") {
                 }
 
                 if (lib_state == true) {
-                    new_code = lib_reader_code(str);
-                    new_lib_name = lib_reader_lib_name(str);
-                    new_tokens = lexer(new_code, new_lib_name);
+                    if (str.substr(str.find_last_of(".") + 1) == "dll") {
+                        load_dll(str.c_str());
+                    }
 
-                    int pos = 0;
+                    else {
+                        new_code = lib_reader_code(str);
+                        new_lib_name = lib_reader_lib_name(str);
 
-                    while (true) {
-                        if (new_tokens.size() <= pos) {
-                            break;
+                        if (lib_name != "") {
+                            new_lib_name = lib_name + "." + new_lib_name;
                         }
 
-                        else if (new_tokens[pos] == "FUNC") {
-                            pre_func.push_back(new_tokens[pos + 1]);
-                            functions[new_tokens[pos + 1]] = new_tokens[pos + 4];
-                            function_arguments[new_tokens[pos + 1]] = new_tokens[pos + 3];
-                            temp_var = argument_parser_2(argument_lexer(new_tokens[pos + 3]));
-                            pos = pos + 5;
-                        }
-                        
-                        else {
-                            pos = pos + 1;
+                        new_tokens = lexer(new_code, new_lib_name);
+
+                        int pos = 0;
+
+                        while (true) {
+                            if (new_tokens.size() <= pos) {
+                                break;
+                            }
+
+                            else if (new_tokens[pos] == "FUNC") {
+                                pre_func.push_back(new_tokens[pos + 1]);
+                                functions[new_tokens[pos + 1]] = new_tokens[pos + 4];
+                                function_arguments[new_tokens[pos + 1]] = new_tokens[pos + 3];
+                                temp_var = argument_parser_2(argument_lexer(new_tokens[pos + 3]));
+                                pos = pos + 5;
+                            }
+                            
+                            else {
+                                pos = pos + 1;
+                            }
                         }
                     }
 
@@ -1109,6 +1241,27 @@ vector <string> lexer(string code, string lib_name = "") {
                 token = "";
                 str = "";
             }
+        }
+
+        else if (call_state == true) {
+            if (token == ".") {
+                tokens.push_back(dll_name);
+                dll_name = "";
+                dll_state = false;
+                dll_func_state = true;
+            }
+
+            else {
+                if (dll_state == true) {
+                    dll_name = dll_name + token;
+                }
+
+                else if (dll_func_state == true) {
+                    dll_func_name = dll_func_name + token;
+                }
+            }
+
+            token = "";
         }
 
         else if (string_state == true) {
@@ -1201,6 +1354,20 @@ vector <string> lexer(string code, string lib_name = "") {
             tokens.push_back("VAR");
             token = "";
             variable_state = true;
+        }
+
+        else if (token == "void") {
+            tokens.push_back("VOID");
+            token = "";
+            call_state = true;
+            dll_state = true;
+        }
+
+        else if (token == "constcharp") {
+            tokens.push_back("CONSTCHARP");
+            token = "";
+            call_state = true;
+            dll_state = true;
         }
 
         else if (token == "while") {
@@ -1296,10 +1463,103 @@ string parser(vector <string> tokens) {
             }
         }
 
+        else if (tokens[pos] == "VOID") {
+            vector <string> argument_tokens = argument_lexer(tokens[pos + 4]);
+            vector <string> temp_variables = argument_parser_3(argument_tokens);
+            int count = argument_parser_4(argument_tokens);
+
+            if (count == 0) {
+                load_func_void(tokens[pos + 1], tokens[pos + 2])();
+            }
+
+            else if (count == 1) {
+                if (argument_tokens[0] == "TRUE") {
+                    load_func_void_bool(tokens[pos + 1], tokens[pos + 2])(true);
+                }
+
+                else if (argument_tokens[0] == "FALSE") {
+                    load_func_void_bool(tokens[pos + 1], tokens[pos + 2])(false);
+                }
+
+                else {
+                    load_func_void_const_char_p(tokens[pos + 1], tokens[pos + 2])(temp_variables[0].c_str());
+                }
+            }
+
+            else {
+                cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                break;
+            }
+
+            pos = pos + 5;
+        }
+
+        else if (tokens[pos] == "CONSTCHARP") {
+            vector <string> argument_tokens = argument_lexer(tokens[pos + 4]);
+            vector <string> temp_variables = argument_parser_3(argument_tokens);
+            int count = argument_parser_4(argument_tokens);
+
+            if (count == 0) {
+                load_func_const_char_p(tokens[pos + 1], tokens[pos + 2])();
+            }
+
+            else if (count == 1) {
+                if (argument_tokens[0] == "TRUE") {
+                    load_func_const_char_p_bool(tokens[pos + 1], tokens[pos + 2])(true);
+                }
+
+                else if (argument_tokens[0] == "FALSE") {
+                    load_func_const_char_p_bool(tokens[pos + 1], tokens[pos + 2])(false);
+                }
+
+                else {
+                    load_func_const_char_p_const_char_p(tokens[pos + 1], tokens[pos + 2])(temp_variables[0].c_str());
+                }
+            }
+
+            else {
+                cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                break;
+            }
+
+            pos = pos + 5;
+        }
+
         else if (tokens[pos] == "RETURN") {
             if (tokens[pos + 1] == "VAR") {
                 result = variables[tokens[pos + 2]];
                 pos = pos + 3;
+            }
+
+            else if (tokens[pos + 1] == "CONSTCHARP") {
+                vector <string> argument_tokens = argument_lexer(tokens[pos + 5]);
+                vector <string> temp_variables = argument_parser_3(argument_tokens);
+                int count = argument_parser_4(argument_tokens);
+
+                if (count == 0) {
+                    result = load_func_const_char_p(tokens[pos + 2], tokens[pos + 3])();
+                }
+
+                else if (count == 1) {
+                    if (argument_tokens[0] == "TRUE") {
+                        result = load_func_const_char_p_bool(tokens[pos + 2], tokens[pos + 3])(true);
+                    }
+
+                    else if (argument_tokens[0] == "FALSE") {
+                        result = load_func_const_char_p_bool(tokens[pos + 2], tokens[pos + 3])(false);
+                    }
+
+                    else {
+                        result = load_func_const_char_p_const_char_p(tokens[pos + 2], tokens[pos + 3])(temp_variables[0].c_str());
+                    }
+                }
+
+                else {
+                    cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                    break;
+                }
+
+                pos = pos + 6;
             }
 
             else if (tokens[pos + 1] == "SYSTEM") {
@@ -1453,6 +1713,37 @@ string parser(vector <string> tokens) {
                 pos = pos + 4;
             }
 
+            else if (tokens[pos + 2] == "CONSTCHARP") {
+                vector <string> argument_tokens = argument_lexer(tokens[pos + 6]);
+                vector <string> temp_variables = argument_parser_3(argument_tokens);
+                int count = argument_parser_4(argument_tokens);
+
+                if (count == 0) {
+                    variables[tokens[pos + 1]] = load_func_const_char_p(tokens[pos + 3], tokens[pos + 4])();
+                }
+
+                else if (count == 1) {
+                    if (argument_tokens[0] == "TRUE") {
+                        variables[tokens[pos + 1]] = load_func_const_char_p_bool(tokens[pos + 3], tokens[pos + 4])(true);
+                    }
+
+                    else if (argument_tokens[0] == "FALSE") {
+                        variables[tokens[pos + 1]] = load_func_const_char_p_bool(tokens[pos + 3], tokens[pos + 4])(false);
+                    }
+
+                    else {
+                        variables[tokens[pos + 1]] = load_func_const_char_p_const_char_p(tokens[pos + 3], tokens[pos + 4])(temp_variables[0].c_str());
+                    }
+                }
+
+                else {
+                    cout << "\033[31m" << "Error." << "\033[0m" << endl;
+                    break;
+                }
+
+                pos = pos + 7;
+            }
+
             else if (tokens[pos + 2] == "SYSTEM") {
                 if (tokens[pos + 3] == "<CEX>") {
                     expression_tokens = expression_lexer(tokens[pos + 4]);
@@ -1495,15 +1786,11 @@ string parser(vector <string> tokens) {
     return result;
 }
 
-int main(int argc, char **argv) {
-    auto start = chrono::system_clock::now();
-    auto end = chrono::system_clock::now();
-    chrono::duration <double> elapsed_seconds;
+int main(int argc, char** argv) {
     vector <string> tokens;
-    string filename;
-    string code;
+    string filename = "";
+    string code = "";
     string arg1 = "";
-    string arg2 = "";
 
     if (argc > 1) {
         arg1 = argv[1];
@@ -1514,36 +1801,15 @@ int main(int argc, char **argv) {
 
         return 0;
     }
-    
-    if (argc > 2) {
-        arg2 = argv[2];
-    }
 
     if (arg1 == "--version") {
-        cout << "AeNC 0.0.9" << endl;
+        cout << "AeNC 0.1.0" << endl;
         return 0;
     }
 
     code = open_file(arg1);
     tokens = lexer(code);
-    
-    if(arg2 == "--info") {
-        end = chrono::system_clock::now();
-
-        elapsed_seconds = end - start;
-        cout << "Ready in: " << elapsed_seconds.count() << endl;
-
-        start = chrono::system_clock::now();
-    }
-
     parser(tokens);
-
-    if(arg2 == "--info") {
-        end = chrono::system_clock::now();
-
-        elapsed_seconds = end - start;
-        cout << "Finished in: " << elapsed_seconds.count() << endl;
-    }
 
     return 0;
 }
